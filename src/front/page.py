@@ -14,7 +14,7 @@ st.set_page_config(
     page_title='Virtual Teaching Assistant',
     layout='wide')
 
-@st.cache
+@st.cache(suppress_st_warning=True)
 def add_videos(evidence):
     """ Adds related videos to sidebar, based on evidence.
     
