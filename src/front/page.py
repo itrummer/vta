@@ -44,7 +44,7 @@ def generate_answer(question):
     if not check_rate():
         return {'error':True, 'answer':'Error - reached query rate limits.'}
     else:
-        http_r = requests.get(answer_url, params={
+        http_r = requests.get(st.session_state['answer_url'], params={
             'question':question, 'user_id':st.session_state['user_id']})
         r_dict = json.loads(http_r.text)
         st.session_state['query_nr'] = st.session_state['query_nr'] + 1
@@ -62,6 +62,21 @@ def generate_id(length):
     return ''.join(random.choice(string.ascii_letters) for _ in range(length)) 
 
 @st.cache(allow_output_mutation=True)
+def login(password):
+    """ Verify password and return URLs of endpoints if successful. 
+    
+    Args:
+        password: user-provided password
+    
+    Returns:
+        dictionary containing error message or URLs
+    """
+    http_r = requests.get(
+        'https://us-central1-dbvta-9bf4b.cloudfunctions.net/login', 
+        params={'password':password})
+    return json.loads(http_r.text)
+
+@st.cache(allow_output_mutation=True)
 def register_feedback(feedback):
     """ Register feedback in the database. 
     
@@ -69,21 +84,30 @@ def register_feedback(feedback):
         feedback: dictionary with feedback
     """
     feedback['user_id'] = st.session_state['user_id']
-    http_r = requests.get(feedback_url, params=feedback)
+    http_r = requests.get(st.session_state['feedback_url'], params=feedback)
     return http_r.text
 
-answer_url = st.secrets['answer_url']
-feedback_url = st.secrets['feedback_url']
-correct_password = st.secrets['password']
+# answer_url = st.secrets['answer_url']
+# feedback_url = st.secrets['feedback_url']
+# correct_password = st.secrets['password']
+
 if 'user_id' not in st.session_state:
     st.session_state['user_id'] = generate_id(48)
     st.session_state['init_s'] = time.time()
     st.session_state['query_nr'] = 0
- 
-password = st.text_input('Enter password:', type='password')
-if password == correct_password:
 
-    #st.header('"Virtual TA" for the Database Lecture by Prof. Trummer')
+logged_in = False
+password = st.text_input('Enter password:', type='password')
+if password:
+    r_dict = login(password)
+    if 'error' in r_dict:
+        st.error(r_dict['error'])
+    else:
+        st.session_state['answer_url'] = r_dict['answer_url']
+        st.session_state['feedback_url'] = r_dict['feedback_url']
+        logged_in = True
+
+if logged_in:
     st.header('Ask Questions about Database Systems')
     st.markdown('''
         This tool answers natural language questions about the course material 
