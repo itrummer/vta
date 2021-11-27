@@ -21,7 +21,8 @@ def add_videos(evidence):
     Args:
         evidence: pieces of evidence supporting generated answer
     """
-    evidence.sort(key=lambda e:e['score'], reverse=True)    
+    st.write(evidence)
+    evidence.sort(key=lambda e:e['score'], reverse=True)
     if evidence:
         video_ids = set()
         video_urls = []
