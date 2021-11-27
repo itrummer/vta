@@ -20,7 +20,6 @@ def add_videos(evidence):
     Args:
         evidence: pieces of evidence supporting generated answer
     """
-    st.write(evidence)
     evidence.sort(key=lambda e:e['score'], reverse=True)
     if evidence:
         video_ids = set()
@@ -32,8 +31,8 @@ def add_videos(evidence):
             if video_id not in video_ids:
                 start_s = int(meta_data['start'])
                 y_url = 'https://www.youtube.com/watch'
-                #video_url = f'{y_url}?v={video_id}&t={start_s}s'
-                video_url = f'{y_url}?v={video_id}'
+                video_url = f'{y_url}?v={video_id}&t={start_s}s'
+                # video_url = f'{y_url}?v={video_id}'
                 video_ids.add(video_id)
                 video_urls.append(video_url)
 
