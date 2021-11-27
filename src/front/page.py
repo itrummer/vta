@@ -23,7 +23,7 @@ def add_videos(evidence):
     evidence.sort(key=lambda e:e['score'], reverse=True)
     if evidence:
         video_ids = set()
-        video_urls = []
+        video_snippets = []
         max_nr_videos = min(len(evidence), 3)
         for e in evidence[0:max_nr_videos]:
             meta_data = e['metadata']
@@ -31,14 +31,16 @@ def add_videos(evidence):
             if video_id not in video_ids:
                 start_s = int(meta_data['start'])
                 y_url = 'https://www.youtube.com/watch'
-                video_url = f'{y_url}?v={video_id}&t={start_s}s'
-                # video_url = f'{y_url}?v={video_id}'
+                # video_url = f'{y_url}?v={video_id}&t={start_s}s'
+                video_url = f'{y_url}?v={video_id}'
                 video_ids.add(video_id)
-                video_urls.append(video_url)
-
-        st.sidebar.header('Related Lecture Videos')
-        for v in video_urls:
-            st.sidebar.video(v)
+                video_snippets.append((video_url, start_s))
+        
+        exp = st.expander(label='Click for Related Lecture Videos')
+        nr_videos = len(video_snippets)
+        cols = exp.columns(nr_videos)
+        for c, (v, s) in zip(cols, video_snippets):
+            c.video(v, start_time=s)
 
 def check_rate():
     """ Checks rate of query generation.
