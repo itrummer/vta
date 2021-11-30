@@ -14,6 +14,8 @@ st.set_page_config(
     page_title='Virtual Teaching Assistant',
     layout='wide')
 
+retry_adapter = requests.adapters.HTTPAdapter(max_retries=3)
+
 def add_videos(evidence):
     """ Adds related videos to sidebar, based on evidence.
     
@@ -72,11 +74,19 @@ def generate_answer(question):
     if not check_rate():
         return {'error':True, 'answer':'Error - reached query rate limits.'}
     else:
-        http_r = requests.get(st.session_state['answer_url'], params={
-            'question':question, 'user_id':st.session_state['user_id']})
-        r_dict = json.loads(http_r.text)
-        st.session_state['query_nr'] = st.session_state['query_nr'] + 1
-        return r_dict
+        with requests.Session() as s:
+            s.mount('http://', retry_adapter)
+            s.mount('https://', retry_adapter)
+            http_r = s.get(
+                st.session_state['answer_url'], timeout=6, params={
+                    'question':question, 'user_id':st.session_state['user_id']}
+                )
+            if http_r.status_code == 200:
+                r_dict = json.loads(http_r.text)
+                st.session_state['query_nr'] = st.session_state['query_nr'] + 1
+                return r_dict
+            else:
+                return {}
 
 def generate_id(length):
     """ Generate random ID string with given length.
@@ -99,12 +109,19 @@ def login(password):
     Returns:
         dictionary containing error message or URLs
     """
-    http_r = requests.get(
-        'https://us-central1-dbvta-9bf4b.cloudfunctions.net/login', 
-        params={'password':password})
-    return json.loads(http_r.text)
+    with requests.Session() as s:
+        s.mount('http://', retry_adapter)
+        s.mount('https://', retry_adapter)
+        http_r = s.get(
+            'https://us-central1-dbvta-9bf4b.cloudfunctions.net/login', 
+            params={'password':password}, timeout=3)
+        if http_r.status_code == 200:
+            return json.loads(http_r.text)
+        else:
+            st.error('Error - connection to server failed. Please retry later.')
+            return {}
 
-@st.cache(allow_output_mutation=True)
+@st.cache(suppress_st_warning=True)
 def register_feedback(feedback):
     """ Register feedback in the database. 
     
@@ -112,8 +129,12 @@ def register_feedback(feedback):
         feedback: dictionary with feedback
     """
     feedback['user_id'] = st.session_state['user_id']
-    http_r = requests.get(st.session_state['feedback_url'], params=feedback)
-    return http_r.text
+    feedback_url = st.session_state['feedback_url']
+    with requests.Session() as s:
+        s.mount('http://', retry_adapter)
+        s.mount('https://', retry_adapter)
+        s.get(feedback_url, params=feedback, timeout=5)
+        st.success('Your feedback was sent.')
 
 # answer_url = st.secrets['answer_url']
 # feedback_url = st.secrets['feedback_url']
@@ -173,9 +194,13 @@ if logged_in:
                 
                 approved = st.button('👍')
                 improved = st.text_input('Suggest better answer:', max_chars=200)
+                send_improved = st.button('Send Suggestion')
                 if approved:
                     register_feedback({
                         'approved':'True', 'question':question, 'answer':answer})
-                if improved:
-                    register_feedback({
-                        'improved':improved, 'question':question, 'answer':answer})
+                if send_improved:
+                    if improved:
+                        register_feedback({'improved':improved, 
+                                           'question':question, 'answer':answer})
+                    else:
+                        st.error('Error - please suggest an improved answer.')
