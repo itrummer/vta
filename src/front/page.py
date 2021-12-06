@@ -10,9 +10,7 @@ import streamlit as st
 import string
 import time
 
-st.set_page_config(
-    page_title='Virtual Teaching Assistant',
-    layout='wide')
+st.set_page_config(page_title='Virtual Teaching Assistant')
 
 retry_adapter = requests.adapters.HTTPAdapter(max_retries=3)
 
@@ -39,7 +37,7 @@ def add_videos(evidence):
                 video_snippets.append((video_url, start_s))
         
         exp = st.expander(label='Click for Related Lecture Videos')
-        nr_videos = len(video_snippets)
+        nr_videos = len(3)
         cols = exp.columns(nr_videos)
         for c, (v, s) in zip(cols, video_snippets):
             c.video(v, start_time=s)
