@@ -78,7 +78,8 @@ def generate_answer(question):
             s.mount('http://', retry_adapter)
             s.mount('https://', retry_adapter)
             http_r = s.get(
-                st.session_state['answer_url'], timeout=6, params={
+                'https://us-central1-dbvta-9bf4b.cloudfunctions.net/vta_answer',
+                timeout=6, params={
                     'question':question, 'user_id':st.session_state['user_id']}
                 )
             if http_r.status_code == 200:
@@ -129,7 +130,7 @@ def register_feedback(feedback):
         feedback: dictionary with feedback
     """
     feedback['user_id'] = st.session_state['user_id']
-    feedback_url = st.session_state['feedback_url']
+    feedback_url = 'https://us-central1-dbvta-9bf4b.cloudfunctions.net/register_feedback'
     with requests.Session() as s:
         s.mount('http://', retry_adapter)
         s.mount('https://', retry_adapter)
@@ -140,8 +141,6 @@ if 'user_id' not in st.session_state:
     st.session_state['user_id'] = generate_id(48)
     st.session_state['init_s'] = time.time()
     st.session_state['query_nr'] = 0
-    st.session_state['answer_url'] = 'https://us-central1-dbvta-9bf4b.cloudfunctions.net/vta_answer'
-    st.session_state['feedback_url'] = 'https://us-central1-dbvta-9bf4b.cloudfunctions.net/register_feedback'
 #
 # logged_in = False
 # password = st.text_input('Enter password:', type='password')
