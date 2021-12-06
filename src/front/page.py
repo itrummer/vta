@@ -37,8 +37,8 @@ def add_videos(evidence):
                 video_snippets.append((video_url, start_s))
         
         exp = st.expander(label='Click for Related Lecture Videos')
-        nr_videos = len(3)
-        cols = exp.columns(nr_videos)
+        nr_videos = len(video_snippets)
+        cols = exp.columns(3)
         for c, (v, s) in zip(cols, video_snippets):
             c.video(v, start_time=s)
 
