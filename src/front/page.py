@@ -99,27 +99,27 @@ def generate_id(length):
     """
     return ''.join(random.choice(string.ascii_letters) for _ in range(length)) 
 
-@st.cache(allow_output_mutation=True)
-def login(password):
-    """ Verify password and return URLs of endpoints if successful. 
-    
-    Args:
-        password: user-provided password
-    
-    Returns:
-        dictionary containing error message or URLs
-    """
-    with requests.Session() as s:
-        s.mount('http://', retry_adapter)
-        s.mount('https://', retry_adapter)
-        http_r = s.get(
-            'https://us-central1-dbvta-9bf4b.cloudfunctions.net/login', 
-            params={'password':password}, timeout=3)
-        if http_r.status_code == 200:
-            return json.loads(http_r.text)
-        else:
-            st.error('Error - connection to server failed. Please retry later.')
-            return {}
+# @st.cache(allow_output_mutation=True)
+# def login(password):
+    # """ Verify password and return URLs of endpoints if successful. 
+    #
+    # Args:
+        # password: user-provided password
+        #
+    # Returns:
+        # dictionary containing error message or URLs
+    # """
+    # with requests.Session() as s:
+        # s.mount('http://', retry_adapter)
+        # s.mount('https://', retry_adapter)
+        # http_r = s.get(
+            # 'https://us-central1-dbvta-9bf4b.cloudfunctions.net/login', 
+            # params={'password':password}, timeout=3)
+        # if http_r.status_code == 200:
+            # return json.loads(http_r.text)
+        # else:
+            # st.error('Error - connection to server failed. Please retry later.')
+            # return {}
 
 @st.cache(suppress_st_warning=True)
 def register_feedback(feedback):
@@ -136,72 +136,68 @@ def register_feedback(feedback):
         s.get(feedback_url, params=feedback, timeout=5)
         st.success('Your feedback was sent.')
 
-# answer_url = st.secrets['answer_url']
-# feedback_url = st.secrets['feedback_url']
-# correct_password = st.secrets['password']
-
 if 'user_id' not in st.session_state:
     st.session_state['user_id'] = generate_id(48)
     st.session_state['init_s'] = time.time()
     st.session_state['query_nr'] = 0
+    st.session_state['answer_url'] = 'https://us-central1-dbvta-9bf4b.cloudfunctions.net/vta_answer'
+    st.session_state['feedback_url'] = 'https://us-central1-dbvta-9bf4b.cloudfunctions.net/register_feedback'
+#
+# logged_in = False
+# password = st.text_input('Enter password:', type='password')
+# if password:
+    # r_dict = login(password)
+    # if 'error' in r_dict:
+        # st.error(r_dict['error'])
+    # else:
+        # st.session_state['answer_url'] = r_dict['answer_url']
+        # st.session_state['feedback_url'] = r_dict['feedback_url']
+        # logged_in = True
 
-logged_in = False
-password = st.text_input('Enter password:', type='password')
-if password:
-    r_dict = login(password)
-    if 'error' in r_dict:
-        st.error(r_dict['error'])
+st.header('Ask Questions about Database Systems')
+st.markdown('''
+    This tool answers natural language questions about the course material 
+    taken from [the database lecture](http://www.databaselecture.com). Answers 
+    may be inaccurate and should be **verified** using **alternative** sources. 
+    The tool returns links to video material that can be used for verification 
+    and further details.
+    
+    Example questions:
+    - Explain this SQL query: SELECT Avg(age) FROM Customers GROUP BY zip_code
+    - What does the rectangle represent in ER diagrams?
+    - What is a strict schedule? 
+    ''')
+#- What is the second rule of write-ahead logging?
+
+question = st.text_input('Enter your question:', max_chars=200)
+
+if question:
+    r_dict = generate_answer(question)
+    if not ('answer' in r_dict):
+        st.error('Failed to obtain answer from server. Please retry later!')
     else:
-        st.session_state['answer_url'] = r_dict['answer_url']
-        st.session_state['feedback_url'] = r_dict['feedback_url']
-        logged_in = True
-
-if logged_in:
-    st.write(st.secrets['test'])
-    st.header('Ask Questions about Database Systems')
-    st.markdown('''
-        This tool answers natural language questions about the course material 
-        taken from [the database lecture](http://www.databaselecture.com). Answers 
-        may be inaccurate and should be **verified** using **alternative** sources. 
-        The tool returns links to video material that can be used for verification 
-        and further details.
-        
-        Example questions:
-        - Explain this SQL query: SELECT Avg(age) FROM Customers GROUP BY zip_code
-        - What does the rectangle represent in ER diagrams?
-        - What is a strict schedule? 
-        ''')
-    #- What is the second rule of write-ahead logging?
-    
-    question = st.text_input('Enter your question:', max_chars=200)
-    
-    if question:
-        r_dict = generate_answer(question)
-        if not ('answer' in r_dict):
-            st.error('Failed to obtain answer from server. Please retry later!')
+        answer = r_dict['answer']
+        if r_dict['error']:
+            st.error(answer)
         else:
-            answer = r_dict['answer']
-            if r_dict['error']:
-                st.error(answer)
-            else:
-                st.info(f'**Answer**: {answer}')
-                
-                if 'result' in r_dict:
-                    result = r_dict['result']
-                
-                    if 'selected_documents' in result:
-                        evidence = result['selected_documents']
-                        add_videos(evidence)
-                
-                approved = st.button('👍')
-                improved = st.text_input('Suggest better answer:', max_chars=200)
-                send_improved = st.button('Send Suggestion')
-                if approved:
-                    register_feedback({
-                        'approved':'True', 'question':question, 'answer':answer})
-                if send_improved:
-                    if improved:
-                        register_feedback({'improved':improved, 
-                                           'question':question, 'answer':answer})
-                    else:
-                        st.error('Error - please suggest an improved answer.')
+            st.info(f'**Answer**: {answer}')
+            
+            if 'result' in r_dict:
+                result = r_dict['result']
+            
+                if 'selected_documents' in result:
+                    evidence = result['selected_documents']
+                    add_videos(evidence)
+            
+            approved = st.button('👍')
+            improved = st.text_input('Suggest better answer:', max_chars=200)
+            send_improved = st.button('Send Suggestion')
+            if approved:
+                register_feedback({
+                    'approved':'True', 'question':question, 'answer':answer})
+            if send_improved:
+                if improved:
+                    register_feedback({'improved':improved, 
+                                       'question':question, 'answer':answer})
+                else:
+                    st.error('Error - please suggest an improved answer.')
