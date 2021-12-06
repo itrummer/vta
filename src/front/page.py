@@ -157,6 +157,7 @@ if password:
         logged_in = True
 
 if logged_in:
+    st.write(st.secrets['test'])
     st.header('Ask Questions about Database Systems')
     st.markdown('''
         This tool answers natural language questions about the course material 
